@@ -1,12 +1,15 @@
-FROM jenkins/inbound-agent
+FROM jenkins/inbound-agent:alpine
 
-## Cambiamos a usuario con poermisos
-USER 0
+USER root
 
-## Install packages
-RUN apt update && apt install iputils-ping net-tools docker docker-compose -y
-CMD ["ping", "www.google.es"]
-RUN gpasswd -a jenkins docker
-RUN usermod -aG docker jenkins
+# Alpine seems to come with libcurl baked in, which is prone to mismatching
+# with newer versions of curl. The solution is to upgrade libcurl.
+RUN apk update && apk add -u libcurl curl
+# Install Docker client
+ARG DOCKER_VERSION=18.03.0-ce
+ARG DOCKER_COMPOSE_VERSION=1.21.0
+RUN curl -fsSL https://download.docker.com/linux/static/stable/`uname -m`/docker-$DOCKER_VERSION.tgz | tar --strip-components=1 -xz -C /usr/local/bin docker/docker && chmod 777 docker
+RUN curl -fsSL https://github.com/docker/compose/releases/download/$DOCKER_COMPOSE_VERSION/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose && chmod 777 /usr/local/bin/docker-compose
 
-USER 1000
+RUN touch /debug-flag
+USER jenkins
